@@ -1,0 +1,38 @@
+[project]
+name = "molecular-property-prediction"
+version = "0.1.0"
+description = "End-to-end molecular property (aqueous solubility) prediction platform: cheminformatics + ML + FastAPI + PostgreSQL + React."
+requires-python = ">=3.11"
+readme = "README.md"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".venv",
+    "venv",
+    "frontend",
+    "alembic/versions",
+    "notebooks",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "SIM", "C4"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ml", "app"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests", "backend/tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+exclude = ["frontend", "notebooks", "alembic"]

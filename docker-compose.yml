@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: molpred_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-molpred}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-molpred_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-molecular_predictions}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-molpred}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: molpred_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-molpred}:${POSTGRES_PASSWORD:-molpred_dev_password}@db:5432/${POSTGRES_DB:-molecular_predictions}
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      BACKEND_CORS_ORIGINS: '["http://localhost:5173","http://localhost:3000"]'
+      MODEL_ARTIFACT_DIR: /app/models
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the trained model artifacts read-only so a freshly trained model
+      # (from `python scripts/train_model.py` on the host) can be picked up by
+      # restarting the container, without rebuilding the image.
+      - ./models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000/api/v1
+    container_name: molpred_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
